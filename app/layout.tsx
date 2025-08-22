@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { GithubIcon } from "lucide-react";
 import { Toaster } from "@/components/ui/sonner";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
+import Image from "next/image";
 
 const publicSans = Public_Sans({ subsets: ["latin"] });
 
@@ -38,24 +39,15 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
-        <title>LangChain + Next.js Template</title>
+        <title>Recipe Chatbot</title>
         <link rel="shortcut icon" href="/images/favicon.ico" />
-        <meta
-          name="description"
-          content="Starter template showing how to use LangChain in Next.js projects. See source code and deploy your own at https://github.com/langchain-ai/langchain-nextjs-template!"
-        />
-        <meta property="og:title" content="LangChain + Next.js Template" />
-        <meta
-          property="og:description"
-          content="Starter template showing how to use LangChain in Next.js projects. See source code and deploy your own at https://github.com/langchain-ai/langchain-nextjs-template!"
-        />
+        <meta name="description" content="Recipe Chatbot" />
+        <meta property="og:title" content="Recipe Chatbot" />
+        <meta property="og:description" content="Recipe Chatbot" />
         <meta property="og:image" content="/images/og-image.png" />
         <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content="LangChain + Next.js Template" />
-        <meta
-          name="twitter:description"
-          content="Starter template showing how to use LangChain in Next.js projects. See source code and deploy your own at https://github.com/langchain-ai/langchain-nextjs-template!"
-        />
+        <meta name="twitter:title" content="Recipe Chatbot" />
+        <meta name="twitter:description" content="Recipe Chatbot" />
         <meta name="twitter:image" content="/images/og-image.png" />
       </head>
       <body className={publicSans.className}>
@@ -64,34 +56,24 @@ export default function RootLayout({
             <div className="grid grid-cols-[1fr,auto] gap-2 p-4">
               <div className="flex gap-4 flex-col md:flex-row md:items-center">
                 <a
-                  href="https://js.langchain.com"
+                  href="https://github.com/temaput/recipe-chatbot-v1"
                   rel="noopener noreferrer"
                   target="_blank"
                   className="flex items-center gap-2"
                 >
-                  <Logo />
+                  <Image
+                    src="/images/recipe-bot-logo.svg"
+                    alt="Recipe Chatbot"
+                    width={48}
+                    height={48}
+                  />
                 </a>
-                <nav className="flex gap-1 flex-col md:flex-row">
-                  <ActiveLink href="/">🏴‍☠️ Chat</ActiveLink>
-                  <ActiveLink href="/structured_output">
-                    🧱 Structured Output
-                  </ActiveLink>
-                  <ActiveLink href="/agents">🦜 Agents</ActiveLink>
-                  <ActiveLink href="/retrieval">🐶 Retrieval</ActiveLink>
-                  <ActiveLink href="/retrieval_agents">
-                    🤖 Retrieval Agents
-                  </ActiveLink>
-                  <ActiveLink href="/ai_sdk">
-                    🌊 React Server Components
-                  </ActiveLink>
-                  <ActiveLink href="/langgraph">🕸️ LangGraph</ActiveLink>
-                </nav>
               </div>
 
               <div className="flex justify-center">
                 <Button asChild variant="outline" size="default">
                   <a
-                    href="https://github.com/langchain-ai/langchain-nextjs-template"
+                    href="https://github.com/temaput/recipe-chatbot-v1"
                     target="_blank"
                   >
                     <GithubIcon className="size-3" />

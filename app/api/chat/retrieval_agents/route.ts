@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Message as VercelChatMessage, StreamingTextResponse } from "ai";
 
-import { createClient } from "@supabase/supabase-js";
-
-import { SupabaseVectorStore } from "@langchain/community/vectorstores/supabase";
+import { MemoryVectorStore } from "langchain/vectorstores/memory";
 import {
   AIMessage,
   BaseMessage,
@@ -72,15 +70,7 @@ export async function POST(req: NextRequest) {
       temperature: 0.2,
     });
 
-    const client = createClient(
-      process.env.SUPABASE_URL!,
-      process.env.SUPABASE_PRIVATE_KEY!,
-    );
-    const vectorstore = new SupabaseVectorStore(new OpenAIEmbeddings(), {
-      client,
-      tableName: "documents",
-      queryName: "match_documents",
-    });
+    const vectorstore = new MemoryVectorStore(new OpenAIEmbeddings());
 
     const retriever = vectorstore.asRetriever();
 
