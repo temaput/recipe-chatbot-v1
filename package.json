@@ -9,7 +9,8 @@
     "start": "next start",
     "lint": "next lint",
     "format": "prettier --write \"app\"",
-    "seed": "WIPE=true tsx scripts/populate_neo4j.ts"
+    "seed": "WIPE=true tsx scripts/populate_neo4j.ts",
+    "langgraph:dev": "langgraph dev"
   },
   "engines": {
     "node": ">=18"

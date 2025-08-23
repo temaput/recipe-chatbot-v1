@@ -12,6 +12,8 @@ import {
 import { ChatOpenAI, OpenAIEmbeddings } from "@langchain/openai";
 import { createRetrieverTool } from "langchain/tools/retriever";
 import { createReactAgent } from "@langchain/langgraph/prebuilt";
+import { DEFAULT_RECIPIES } from "@/data/DefaultRecipies";
+import { Document } from "@langchain/core/documents";
 
 export const runtime = "edge";
 
@@ -43,6 +45,21 @@ const AGENT_SYSTEM_TEMPLATE = `You are a stereotypical robot named Robbie and mu
 
 If you don't know how to answer a question, use the available tools to look up relevant information. You should particularly do this for questions about LangChain.`;
 
+const docList = DEFAULT_RECIPIES.map((recipe) => {
+  return new Document({
+    pageContent: recipe.ingredients
+      .map((ingredient) => ingredient.name)
+      .join(", "),
+    metadata: { id: recipe.id },
+  });
+});
+
+const vectorstore = await MemoryVectorStore.fromDocuments(
+  docList,
+  new OpenAIEmbeddings(),
+);
+
+const retriever = vectorstore.asRetriever();
 /**
  * This handler initializes and calls an tool caling ReAct agent.
  * See the docs for more information:
@@ -70,10 +87,6 @@ export async function POST(req: NextRequest) {
       temperature: 0.2,
     });
 
-    const vectorstore = new MemoryVectorStore(new OpenAIEmbeddings());
-
-    const retriever = vectorstore.asRetriever();
-
     /**
      * Wrap the retriever in a tool to present it to the agent in a
      * usable form.
@@ -97,6 +110,8 @@ export async function POST(req: NextRequest) {
        */
       messageModifier: new SystemMessage(AGENT_SYSTEM_TEMPLATE),
     });
+
+    agent
 
     if (!returnIntermediateSteps) {
       /**

@@ -1,0 +1,10 @@
+{
+    "node_version": "20",
+    "dockerfile_lines": [],
+    "dependencies": ["."],
+    "graphs": {
+      "agent": "./app/api/chat/retrieval_agents/agent.ts:graph"
+    },
+    "env": ".env"
+  }
+  
