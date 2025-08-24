@@ -14,7 +14,7 @@ import { Annotation } from "@langchain/langgraph";
 import { BaseMessage } from "@langchain/core/messages";
 import { END } from "@langchain/langgraph";
 import { DEFAULT_RECIPIES } from "@/data/DefaultRecipies";
-import { PromptTemplate } from "@langchain/core/prompts";
+import neo4j from "neo4j-driver";
 
 const DietSchema = z.enum([
   "vegan",
@@ -52,10 +52,13 @@ type Candidate = {
   time: number;
   diet: Diet[];
   score: number;
+  ingredients: string[];
 };
 
 type Facts = {
   filters: Filters;
+  graphCandidates: Candidate[];
+  semanticCandidates: Candidate[];
   candidates: Candidate[];
   iterations: number;
 };
@@ -76,6 +79,8 @@ const GraphState = Annotation.Root({
         intent: "search_recipes",
       },
       candidates: [],
+      graphCandidates: [],
+      semanticCandidates: [],
       iterations: 0,
     }),
   }),
@@ -87,15 +92,51 @@ const chatModel = new ChatOpenAI({
   temperature: 0.2,
 });
 
+const n4jDriver = neo4j.driver(
+  process.env.NEO4J_URI!,
+  neo4j.auth.basic(process.env.NEO4J_USERNAME!, process.env.NEO4J_PASSWORD!),
+);
+
 async function graphSearch(facts: Facts): Promise<Candidate[]> {
   // expand via substitutions graph (respect dietsAllowed), score, return top-k
-  return DEFAULT_RECIPIES.map((recipe) => ({
+
+  const session = n4jDriver.session();
+  const n4jQuery = `
+  // $pantry: [string], $diet: [string], $maxHops: int (usually 1)
+  MATCH (p:Ingredient) WHERE toLower(p.name) IN $pantry
+  WITH collect(p) AS pantryNodes
+
+  // 1-hop substitutes valid for the user's diet
+  CALL {
+    WITH pantryNodes, $diet AS dietAllowed
+    MATCH (p IN pantryNodes)-[s:SUBS]->(alt:Ingredient)
+    WHERE size(s.dietsAllowed) = 0 OR any(d IN s.dietsAllowed WHERE d IN dietAllowed)
+    RETURN collect(alt) AS subs1
+  }
+
+  WITH pantryNodes + subs1 AS usable
+  MATCH (r:Recipe)-[req:REQUIRES]->(i:Ingredient)
+  WHERE i IN usable OR req.optional = true
+  WITH r, collect(req.optional = false AND NOT (i IN usable)) AS missingRequired
+  WHERE NOT any(x IN missingRequired WHERE x = true) // drop recipes that still miss required items
+  RETURN r LIMIT 20;
+  `;
+
+  const result = await session.run(n4jQuery, {
+    pantry: facts.filters.ingredients,
+    diet: facts.filters.constraints,
+    maxHops: 1,
+  });
+  const recipes = result.records.map((r) => r.get("r"));
+  session.close();
+  return recipes.map((recipe) => ({
     id: recipe.id,
     title: recipe.title,
     time: recipe.time_minutes,
-    diet: recipe.diet.map((d) => d as Diet),
+    diet: recipe.diet.map((d: string) => d as Diet),
     cuisine: recipe.cuisine,
     score: 0,
+    ingredients: recipe.ingredients.map((i: any) => i.name),
   }));
 }
 async function semanticSearch(
@@ -103,12 +144,14 @@ async function semanticSearch(
   facts: Facts,
 ): Promise<Candidate[]> {
   // vector/RAG over recipes (local or Neo4jVector)
+  return [];
   return DEFAULT_RECIPIES.map((recipe) => ({
     id: recipe.id,
     title: recipe.title,
     time: recipe.time_minutes,
     diet: recipe.diet.map((d) => d as Diet),
     cuisine: recipe.cuisine,
+    ingredients: recipe.ingredients.map((i) => i.name),
     score: 0,
   }));
 }
@@ -119,23 +162,56 @@ async function getRecipe(id: string) {
 
 // ---- State methods ----
 
-function getScoredCandidates(state: State) {
+function calculateDynamicScore(candidate: Candidate, state: State) {
   const f = state.facts;
-  return f.candidates.map((candidate) => {
-    let score = 0;
-    if (f.filters.constraints.length > 0) {
-      score += f.filters.constraints.every((c) => candidate.diet.includes(c))
-        ? 1
-        : -10;
-    }
-    if (f.filters.cuisine) {
-      score += candidate.cuisine === f.filters.cuisine ? 1 : -1;
-    }
-    if (f.filters.time_minutes > 0) {
-      score += candidate.time <= f.filters.time_minutes ? 1 : -1;
-    }
-    return { ...candidate, score };
+  let score = 0;
+  if (f.filters.ingredients.length > 0) {
+    score += f.filters.ingredients.every((i) =>
+      candidate.ingredients.includes(i),
+    )
+      ? 1
+      : 0;
+  }
+  if (f.filters.constraints.length > 0) {
+    score += f.filters.constraints.every((c) => candidate.diet.includes(c))
+      ? 1
+      : -10;
+  }
+  if (f.filters.cuisine) {
+    score += candidate.cuisine === f.filters.cuisine ? 1 : -1;
+  }
+  if (f.filters.time_minutes > 0) {
+    score += candidate.time <= f.filters.time_minutes ? 1 : -1;
+  }
+  return { ...candidate, score };
+}
+
+function mergeSearchResults(state: State, limit: number = 10): Candidate[] {
+  const resultMap = new Map<string, Candidate>();
+  const f = state.facts;
+
+  f.graphCandidates.forEach((candidate) => {
+    resultMap.set(candidate.id, {
+      ...candidate,
+      score: candidate.score + 0.5,
+    });
   });
+
+  f.semanticCandidates.forEach((candidate) => {
+    if (!resultMap.has(candidate.id)) {
+      resultMap.set(candidate.id, candidate);
+    } else {
+      const existing = resultMap.get(candidate.id)!;
+      resultMap.set(candidate.id, {
+        ...existing,
+        score: existing.score + candidate.score * 0.3,
+      });
+    }
+  });
+
+  return Array.from(resultMap.values())
+    .sort((a, b) => b.score - a.score)
+    .slice(0, limit);
 }
 
 // ---- Nodes ----
@@ -148,7 +224,6 @@ enum NodeName {
   Retrieve = "retrieve",
   AskToPickCandidate = "ask_to_pick_candidate",
   HandleNoCandidates = "handle_no_candidates",
-
   Done = "done",
 }
 
@@ -173,30 +248,50 @@ async function Conversation(state: State, additionalInstructions: string) {
 
 const Nodes = {
   [NodeName.Parser]: async (state: State) => {
-    const lastMessage = state.messages.at(-1);
+    const lastDialog = JSON.stringify(
+      state.messages.slice(-2).map((m) => m.content),
+    );
+
     const response = await chatModel
       .withStructuredOutput(FiltersSchema)
       .invoke([
         new HumanMessage(
           `You should detect user's intent (is he picking a recipe from the list or 
-          searching for a new recipe) and extract filters from the following message: ${lastMessage?.content}`,
+          searching for a new recipe) and extract filters from the following dialog: 
+
+          ---
+
+          ${lastDialog}
+
+          ---
+          `,
         ),
       ]);
 
     return { facts: { filters: response } };
   },
   [NodeName.Router]: async (state: State) => {
-    return {};
+    const f = state.facts;
+    if (f.graphCandidates.length > 0 || f.semanticCandidates.length > 0) {
+      f.candidates = mergeSearchResults(state);
+      f.graphCandidates = [];
+      f.semanticCandidates = [];
+    }
+    f.candidates = f.candidates.map((c) => calculateDynamicScore(c, state));
+    f.candidates.sort((a, b) => b.score - a.score);
+    return {
+      facts: f,
+    };
   },
   [NodeName.GraphSearch]: async (state: State) => {
     const f = { ...state.facts, iterations: (state.facts.iterations ?? 0) + 1 };
-    f.candidates = await graphSearch(f);
+    f.graphCandidates = await graphSearch(f);
     return { facts: f };
   },
   [NodeName.SemanticSearch]: async (state: State) => {
     const f = { ...state.facts, iterations: (state.facts.iterations ?? 0) + 1 };
     const query = String(state.messages.at(-1)?.content ?? "");
-    f.candidates = await semanticSearch(query, f);
+    f.semanticCandidates = await semanticSearch(query, f);
     return { facts: f };
   },
   [NodeName.AskToPickCandidate]: async (state: State) => {

@@ -10,7 +10,7 @@
     "lint": "next lint",
     "format": "prettier --write \"app\"",
     "seed": "WIPE=true tsx scripts/populate_neo4j.ts",
-    "langgraph:dev": "langgraph dev"
+    "langgraph:dev": "npx @langchain/langgraph-cli dev"
   },
   "engines": {
     "node": ">=18"
