@@ -23,9 +23,9 @@ export const FiltersSchema = z.object({
     .number()
     .describe("the time in minutes that the user wants to spend on the recipe"),
   intent: z
-    .enum(["search_recipes", "pick_candidate", "other"])
+    .enum(["search_recipes", "pick_candidate", "search_substitutes", "other"])
     .describe(
-      "the intent of the user: is he picking a recipe from the list or searching for a new recipe or asking other questions",
+      "the intent of the user: is he picking a recipe from the list or searching for a new recipe or searching for substitutes or asking other questions",
     ),
 });
 type Diet = z.infer<typeof DietSchema>;
@@ -59,6 +59,7 @@ export type Facts = {
   semanticCandidates: Candidate[];
   candidates: Candidate[];
   flags: { didRetrieval: boolean; didAskForMoreContext: boolean };
+  substitutes: object[];
 };
 
 export const GraphState = Annotation.Root({
@@ -80,6 +81,7 @@ export const GraphState = Annotation.Root({
       graphCandidates: [],
       semanticCandidates: [],
       flags: { didRetrieval: false, didAskForMoreContext: false },
+      substitutes: [],
     }),
   }),
 });

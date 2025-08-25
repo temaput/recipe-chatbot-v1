@@ -3,7 +3,10 @@ import { HumanMessage, SystemMessage } from "@langchain/core/messages";
 import { ChatOpenAI } from "@langchain/openai";
 import { END } from "@langchain/langgraph";
 import neo4j from "neo4j-driver";
-import { findRecipesByIngredientsQuery } from "@/data/RecipeQueries";
+import {
+  findRecipesByIngredientsQuery,
+  findSubstitutesByIngredientsQuery,
+} from "@/data/RecipeQueries";
 import { Facts, Candidate, State, GraphState, FiltersSchema } from "./types";
 import { PostgresSaver } from "@langchain/langgraph-checkpoint-postgres";
 
@@ -11,7 +14,6 @@ const checkpointer = PostgresSaver.fromConnString(
   process.env.NEON_CONNECTION_STRING!,
 );
 
-// NOTE: you need to call .setup() the first time you're using your checkpointer
 await checkpointer.setup();
 
 const chatModel = new ChatOpenAI({
@@ -41,8 +43,6 @@ function parseNeo4jObject(record: object) {
 }
 
 async function graphSearch(facts: Facts): Promise<Candidate[]> {
-  // expand via substitutions graph (respect dietsAllowed), score, return top-k
-
   const session = n4jDriver.session();
 
   const result = await session.run(findRecipesByIngredientsQuery, {
@@ -59,7 +59,6 @@ async function graphSearch(facts: Facts): Promise<Candidate[]> {
     };
     return candidate;
   });
-  console.log("recipes", JSON.stringify(recipes, null, 2));
   session.close();
   return recipes;
 }
@@ -70,6 +69,20 @@ async function semanticSearch(
   // vector/RAG over recipes (local or Neo4jVector)
   if (!process.env.SEMANTIC_SEARCH_ENABLED) return [];
   throw new Error("Semantic search is not implemented");
+}
+
+async function substituteSearch(facts: Facts): Promise<object[]> {
+  const session = n4jDriver.session();
+  const topCandidate = facts.candidates[0];
+  const result = await session.run(findSubstitutesByIngredientsQuery, {
+    ingredientList: topCandidate.missingIngredients.map((name) => ({ name })),
+    diets: facts.filters.constraints,
+  });
+  const substitutes = result.records.map((record) => {
+    return parseNeo4jObject(record.toObject());
+  });
+  session.close();
+  return substitutes;
 }
 
 // ---- State methods ----
@@ -124,6 +137,7 @@ enum NodeName {
   Router = "router",
   GraphSearch = "graph_search",
   SemanticSearch = "semantic_search",
+  SubstituteSearch = "substitute_search",
   Retrieve = "retrieve",
   HandleManyCandidates = "handle_many_candidates",
   HandleNoCandidates = "handle_no_candidates",
@@ -154,6 +168,7 @@ async function Conversation(
     - NEVER invent, create, or make up recipes on your own
     - NEVER pick or choose specific recipes unless explicitly instructed
     - NEVER provide recipe details unless given the exact recipe data
+    - NEVER suggest substitutes for ingredients unless explicitly instructed
     - NEVER take initiative in recipe selection - only respond to what's provided
     - ONLY work with the specific recipes and data you're given
     
@@ -209,12 +224,28 @@ const Nodes = {
       f.candidates = f.candidates.filter((c) => c.overallScore >= firstScore);
     }
 
+    // Sanitize state
+
+    if (f.filters.intent === "search_substitutes") {
+      if (f.candidates.length === 0) {
+        // If no candidates, we should search for recipes first
+        f.filters.intent = "search_recipes";
+      }
+      if (f.candidates.length > 1) {
+        // If we have more than one candidate, we should pick the first one before searching for substitutes
+        f.candidates = f.candidates.slice(0, 1);
+      }
+    }
+
     return {
       facts: f,
     };
   },
   [NodeName.GraphSearch]: async (state: State) => {
     const f = state.facts;
+    if (f.filters.ingredients.length === 0) {
+      return {};
+    }
     f.graphCandidates = await graphSearch(f);
     return { facts: f };
   },
@@ -222,6 +253,11 @@ const Nodes = {
     const f = state.facts;
     const query = String(state.messages.at(-1)?.content ?? "");
     f.semanticCandidates = await semanticSearch(query, f);
+    return { facts: f };
+  },
+  [NodeName.SubstituteSearch]: async (state: State) => {
+    const f = state.facts;
+    f.substitutes = await substituteSearch(f);
     return { facts: f };
   },
   [NodeName.HandleManyCandidates]: async (state: State) => {
@@ -263,8 +299,23 @@ const Nodes = {
     );
   },
   [NodeName.Done]: async (state: State) => {
+    const recipe = state.facts.candidates[0];
     if (state.facts.filters.intent === "other") {
       return Conversation(state, "");
+    }
+    if (state.facts.filters.intent === "search_substitutes") {
+      return Conversation(
+        state,
+        `Here is a full list of available substitutes: 
+        ----
+        ${JSON.stringify(state.facts.substitutes)}
+        ----
+        Explain to the user how he can use this information to cook the recipe:
+        ---
+        ${JSON.stringify(state.facts.candidates[0])}
+        ---
+        `,
+      );
     }
     if (state.facts.filters.intent === "pick_candidate") {
       return Conversation(
@@ -276,7 +327,6 @@ const Nodes = {
         User has picked a recipe from the list. Find it in the list and describe it in detail.`,
       );
     }
-    const recipe = state.facts.candidates[0];
 
     return Conversation(
       state,
@@ -286,7 +336,8 @@ const Nodes = {
       ${JSON.stringify(recipe)}. 
       ---
       
-      Describe it in detail. Explain to the user if some ingredients are missing or if there are some substitutions.`,
+      Describe it in detail. If some ingredients are missing, mention it and ask user if he wants you to search for susbstitutes. 
+      Don't suggest substitutes yourself.`,
     );
   },
 };
@@ -295,6 +346,10 @@ const Nodes = {
 
 function shouldContinue(state: State) {
   const f = state.facts;
+  if (f.filters.intent === "search_substitutes") {
+    if (f.substitutes.length === 0) return NodeName.SubstituteSearch;
+    return NodeName.Done;
+  }
   if (f.filters.intent !== "search_recipes") return NodeName.Done;
   if (state.facts.candidates.length > 1) return NodeName.HandleManyCandidates;
   if (state.facts.candidates.length === 0) {
@@ -315,6 +370,7 @@ export const graph = new StateGraph(GraphState)
   .addNode(NodeName.HandleNoCandidates, Nodes[NodeName.HandleNoCandidates])
   .addNode(NodeName.Done, Nodes[NodeName.Done])
   .addNode(NodeName.Retrieve, Nodes[NodeName.Retrieve])
+  .addNode(NodeName.SubstituteSearch, Nodes[NodeName.SubstituteSearch])
   .addEdge("__start__", NodeName.Parser)
   .addEdge(NodeName.Parser, NodeName.Router)
   .addConditionalEdges(NodeName.Router, shouldContinue)
@@ -322,6 +378,7 @@ export const graph = new StateGraph(GraphState)
   .addEdge(NodeName.Retrieve, NodeName.SemanticSearch)
   .addEdge(NodeName.GraphSearch, NodeName.Router)
   .addEdge(NodeName.SemanticSearch, NodeName.Router)
+  .addEdge(NodeName.SubstituteSearch, NodeName.Router)
   .addEdge(NodeName.HandleNoCandidates, END)
   .addEdge(NodeName.HandleManyCandidates, END)
   .addEdge(NodeName.Done, END)

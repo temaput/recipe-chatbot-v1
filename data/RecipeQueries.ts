@@ -66,3 +66,46 @@ RETURN r {.*, embedding: null},
 ORDER BY overallScore DESC
 LIMIT 5;
 `;
+
+export const findSubstitutesByIngredientsQuery = `
+WITH $ingredientList AS missingIngredients, $diets AS dietaryRestrictions
+
+// Find missing ingredients using fuzzy search - get best match for each
+UNWIND missingIngredients AS missingIngredient
+CALL db.index.fulltext.queryNodes('ingredient_fuzzy_search', missingIngredient.name + "~") 
+YIELD node AS candidateIngredient, score
+WHERE score > 0.5
+WITH missingIngredient, candidateIngredient, score, dietaryRestrictions
+ORDER BY missingIngredient.name, score DESC
+WITH missingIngredient, collect(candidateIngredient)[0] AS matchedMissingIngredient, collect(score)[0] AS score, dietaryRestrictions
+WHERE matchedMissingIngredient IS NOT NULL
+
+// Find ingredients that can substitute for the missing ingredients
+MATCH (matchedMissingIngredient)-[sub:SUBS]->(substitute:Ingredient)
+WHERE (size(dietaryRestrictions) = 0 OR size(sub.dietsAllowed) = 0) 
+   OR any(d IN sub.dietsAllowed WHERE d IN dietaryRestrictions)
+
+// Calculate combined score and order by it
+WITH missingIngredient, matchedMissingIngredient, substitute, sub, score, dietaryRestrictions,
+     (score * sub.quality) AS combinedScore
+ORDER BY missingIngredient.name, combinedScore DESC
+
+// Group substitutes by missing ingredient
+WITH missingIngredient.name AS originalMissingIngredient,
+     matchedMissingIngredient.name AS missingIngredientName,
+     collect({
+       substituteIngredient: substitute {.*},
+       substitutionQuality: sub.quality,
+       ratio: sub.ratio,
+       dietsAllowed: sub.dietsAllowed,
+       similarity: score,
+       combinedScore: combinedScore
+     })[0..5] AS topSubstitutes,
+     count(*) AS totalSubstitutesFound
+     
+RETURN originalMissingIngredient,
+       missingIngredientName,
+       topSubstitutes,
+       totalSubstitutesFound
+ORDER BY originalMissingIngredient;
+`;
