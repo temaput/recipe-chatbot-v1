@@ -3,9 +3,11 @@ import { HumanMessage, SystemMessage } from "@langchain/core/messages";
 import { ChatOpenAI } from "@langchain/openai";
 import { END } from "@langchain/langgraph";
 import neo4j from "neo4j-driver";
+import { OpenAI } from "openai";
 import {
   findRecipesByIngredientsQuery,
   findSubstitutesByIngredientsQuery,
+  semanticSearchQuery,
 } from "@/data/RecipeQueries";
 import { Facts, Candidate, State, GraphState, FiltersSchema } from "./types";
 import { PostgresSaver } from "@langchain/langgraph-checkpoint-postgres";
@@ -14,7 +16,7 @@ const checkpointer = PostgresSaver.fromConnString(
   process.env.NEON_CONNECTION_STRING!,
 );
 
-await checkpointer.setup();
+// await checkpointer.setup();
 
 const chatModel = new ChatOpenAI({
   model: "gpt-4o-mini",
@@ -31,6 +33,11 @@ const n4jDriver = neo4j.driver(
   neo4j.auth.basic(process.env.NEO4J_USERNAME!, process.env.NEO4J_PASSWORD!),
 );
 
+// Initialize OpenAI client for embeddings
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY!,
+});
+
 function parseNeo4jObject(record: object) {
   return Object.fromEntries(
     Object.entries(record).map(([key, value]) => {
@@ -40,6 +47,20 @@ function parseNeo4jObject(record: object) {
       return [key, value];
     }),
   );
+}
+
+// Function to generate embeddings for text
+async function generateEmbedding(text: string): Promise<number[]> {
+  try {
+    const response = await openai.embeddings.create({
+      model: "text-embedding-3-small",
+      input: text,
+    });
+    return response.data[0].embedding;
+  } catch (error) {
+    console.error(`Error generating embedding for text: ${text}`, error);
+    throw error;
+  }
 }
 
 async function graphSearch(facts: Facts): Promise<Candidate[]> {
@@ -66,9 +87,43 @@ async function semanticSearch(
   query: string,
   facts: Facts,
 ): Promise<Candidate[]> {
-  // vector/RAG over recipes (local or Neo4jVector)
+  // vector/RAG over recipes using Neo4j vector index
+  // Enable semantic search if OPENAI_API_KEY is available
   if (!process.env.SEMANTIC_SEARCH_ENABLED) return [];
-  throw new Error("Semantic search is not implemented");
+
+  const session = n4jDriver.session();
+
+  try {
+    // Generate embedding for the search query
+    const queryEmbedding = await generateEmbedding(query);
+
+    // Use Neo4j vector search to find similar recipes
+
+    const result = await session.run(semanticSearchQuery, {
+      queryVector: queryEmbedding,
+      limit: 10,
+      threshold: 0.7, // Cosine similarity threshold
+      diets: facts.filters.constraints,
+      maxTime: facts.filters.time_minutes || 0,
+    });
+
+    const recipes = result.records.map((record) => {
+      // Convert Neo4j integers to regular numbers
+      const { r, ...rest } = parseNeo4jObject(record.toObject());
+      const candidate: Candidate = {
+        ...r,
+        ...rest,
+      };
+      return candidate;
+    });
+
+    return recipes;
+  } catch (error) {
+    console.error("Error in semantic search:", error);
+    return [];
+  } finally {
+    session.close();
+  }
 }
 
 async function substituteSearch(facts: Facts): Promise<object[]> {
@@ -269,15 +324,11 @@ const Nodes = {
       const availableCuisines = [
         ...new Set(f.candidates.map((c) => c.cuisine)),
       ];
-      const missingIngredients = [
-        ...new Set(f.candidates.flatMap((c) => c.missingIngredients)),
-      ];
       return Conversation(
         state,
         `We have many recipes available that satisfy the user's requirements. 
         Let's ask if user wants to provide additional criteria to narrow down the list. 
         Available constraints: ${availableConstraints.join(", ")}. Available cuisines: ${availableCuisines.join(", ")}.
-        Also ask if user wants to add any ingredients to the list. Missing ingredients: ${missingIngredients.join(", ")}.
         `,
       );
     }
@@ -293,6 +344,8 @@ const Nodes = {
     return { facts: { candidates: [], flags: { didRetrieval: true } } };
   },
   [NodeName.HandleNoCandidates]: async (state: State) => {
+    const f = state.facts;
+    f.flags.didRetrieval = false;
     return Conversation(
       state,
       "No candidates found. Ask the user to refine their filters.",

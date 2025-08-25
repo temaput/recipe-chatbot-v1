@@ -109,3 +109,35 @@ RETURN originalMissingIngredient,
        totalSubstitutesFound
 ORDER BY originalMissingIngredient;
 `;
+
+export const semanticSearchQuery = `
+      CALL db.index.vector.queryNodes('recipe_embeddings', $limit, $queryVector)
+      YIELD node AS r, score
+      WHERE score >= $threshold
+        AND (size($diets) = 0 OR any(d IN $diets WHERE (r)-[:HAS_DIET]->(:Diet {name: d})))
+        AND ($maxTime = 0 OR r.time_minutes <= $maxTime)
+      
+      // Get all ingredients for scoring
+      OPTIONAL MATCH (r)-[:REQUIRES]->(ingredient:Ingredient)
+      WITH r, score, collect(ingredient.name) AS allIngredients
+      
+      // Calculate basic compatibility scores
+      WITH r, score, allIngredients,
+           size(allIngredients) AS totalRequiredIngredients,
+           0 AS satisfiedIngredients,
+           0.1 AS satisfactionRatio,
+           score AS avgCombinedScore,
+           allIngredients AS missingIngredients,
+           [] AS ingredientMatches
+      
+      RETURN r {.*, embedding: null}, 
+             totalRequiredIngredients,
+             satisfiedIngredients,
+             size(missingIngredients) AS missingIngredientsCount,
+             satisfactionRatio,
+             avgCombinedScore,
+            (satisfactionRatio * avgCombinedScore) AS overallScore,
+             ingredientMatches,
+             missingIngredients
+      ORDER BY overallScore DESC
+    `;
