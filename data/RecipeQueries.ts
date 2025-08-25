@@ -1,4 +1,4 @@
-export const findRecipesByIngredients = `
+export const findRecipesByIngredientsQuery = `
 WITH $ingredientList AS inputIngredients, $diets AS dietaryRestrictions
 
 // Find available ingredients using fuzzy search
@@ -64,11 +64,5 @@ RETURN r {.*, embedding: null},
        ingredientMatches,
        missingIngredients
 ORDER BY overallScore DESC
-LIMIT 10;
-`;
-
-export const getRecipeById = `
-MATCH (r:Recipe)
-WHERE r.id = $id
-RETURN r {.*, embedding: null} AS recipe
+LIMIT 5;
 `;

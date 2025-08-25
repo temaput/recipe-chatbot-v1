@@ -76,7 +76,7 @@ export default function AgentsPage() {
       endpoint="api/chat/retrieval_agents"
       emptyStateComponent={InfoCard}
       showIngestForm={true}
-      showIntermediateStepsToggle={true}
+      showIntermediateStepsToggle={false}
       placeholder={
         'Beep boop! I\'m a robot retrieval-focused agent! Ask, "What are some ways of doing retrieval in LangChain.js?"'
       }

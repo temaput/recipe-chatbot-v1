@@ -1,104 +1,10 @@
-import {
-  StateGraph,
-  MessagesAnnotation,
-  MemorySaver,
-} from "@langchain/langgraph";
-import {
-  HumanMessage,
-  AIMessage,
-  SystemMessage,
-} from "@langchain/core/messages";
-import { z } from "zod";
+import { StateGraph, MemorySaver } from "@langchain/langgraph";
+import { HumanMessage, SystemMessage } from "@langchain/core/messages";
 import { ChatOpenAI } from "@langchain/openai";
-import { Annotation } from "@langchain/langgraph";
-import { BaseMessage } from "@langchain/core/messages";
 import { END } from "@langchain/langgraph";
-import { DEFAULT_RECIPIES } from "@/data/DefaultRecipies";
 import neo4j from "neo4j-driver";
-import { findRecipesByIngredients, getRecipeById } from "@/data/RecipeQueries";
-
-const DietSchema = z.enum([
-  "vegan",
-  "vegetarian",
-  "gluten_free",
-  "dairy_free",
-  "nut_free",
-  "halal_friendly",
-]);
-
-const FiltersSchema = z.object({
-  ingredients: z
-    .array(z.string())
-    .describe("the ingredients that the user wants to use"),
-  constraints: z
-    .array(DietSchema)
-    .describe("the dietary constraints that the user has"),
-  cuisine: z.string().describe("the cuisine that the user wants to use"),
-  time_minutes: z
-    .number()
-    .describe("the time in minutes that the user wants to spend on the recipe"),
-  intent: z
-    .enum(["search_recipes", "pick_candidate", "other"])
-    .describe(
-      "the intent of the user: is he picking a recipe from the list or searching for a new recipe or asking other questions",
-    ),
-});
-type Diet = z.infer<typeof DietSchema>;
-
-type Filters = z.infer<typeof FiltersSchema>;
-type Candidate = {
-  id: string;
-  title: string;
-  cuisine: string;
-  time: number;
-  diet: Diet[];
-  totalRequiredIngredients: number;
-  satisfiedIngredients: number;
-  satisfactionRatio: number;
-  avgCombinedScore: number;
-  overallScore: number;
-  missingIngredients: string[];
-  ingredientMatches: {
-    requiredIngredient: string;
-    sourceIngredient: string;
-    matchType: "direct" | "substitute";
-    similarity: number;
-    substitutionQuality: number;
-    combinedScore: number;
-  }[];
-};
-
-type Facts = {
-  filters: Filters;
-  graphCandidates: Candidate[];
-  semanticCandidates: Candidate[];
-  candidates: Candidate[];
-  flags: { didRetrieval: boolean; didAskForMoreContext: boolean };
-};
-
-const GraphState = Annotation.Root({
-  messages: Annotation<BaseMessage[]>({
-    reducer: (x, y) => x.concat(y),
-    default: () => [],
-  }),
-  facts: Annotation<Facts>({
-    reducer: (x, y) => ({ ...x, ...y }),
-    default: () => ({
-      filters: {
-        ingredients: [],
-        constraints: [],
-        cuisine: "",
-        time_minutes: 0,
-        intent: "search_recipes",
-      },
-      candidates: [],
-      graphCandidates: [],
-      semanticCandidates: [],
-      flags: { didRetrieval: false, didAskForMoreContext: false },
-    }),
-  }),
-});
-type State = typeof GraphState.State;
+import { findRecipesByIngredientsQuery } from "@/data/RecipeQueries";
+import { Facts, Candidate, State, GraphState, FiltersSchema } from "./types";
 
 const chatModel = new ChatOpenAI({
   model: "gpt-4o-mini",
@@ -126,7 +32,7 @@ async function graphSearch(facts: Facts): Promise<Candidate[]> {
 
   const session = n4jDriver.session();
 
-  const result = await session.run(findRecipesByIngredients, {
+  const result = await session.run(findRecipesByIngredientsQuery, {
     ingredientList: facts.filters.ingredients.map((name) => ({ name })),
     diets: facts.filters.constraints,
     maxHops: 1,

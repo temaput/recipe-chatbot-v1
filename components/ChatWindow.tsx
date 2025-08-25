@@ -2,7 +2,7 @@
 
 import { type Message } from "ai";
 import { useChat } from "ai/react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { FormEvent, ReactNode } from "react";
 import { toast } from "sonner";
 import { StickToBottom, useStickToBottomContext } from "use-stick-to-bottom";
@@ -183,7 +183,12 @@ export function ChatWindow(props: {
     Record<string, any>
   >({});
 
+  const threadId = useRef<string>(crypto.randomUUID());
+
   const chat = useChat({
+    body: {
+      threadid: threadId.current,
+    },
     api: props.endpoint,
     onResponse(response) {
       const sourcesHeader = response.headers.get("x-sources");

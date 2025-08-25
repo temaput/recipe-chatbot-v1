@@ -1,47 +1,86 @@
 import { z } from "zod";
-export type DietTag =
-  | "vegetarian"
-  | "vegan"
-  | "gluten_free"
-  | "dairy_free"
-  | "nut_free"
-  | "halal_friendly";
-export type IngredientQty = {
-  name: string;
-  amount?: string;
-  optional?: boolean;
-};
-export type Recipe = {
+import { Annotation } from "@langchain/langgraph";
+import { BaseMessage } from "@langchain/core/messages";
+
+const DietSchema = z.enum([
+  "vegan",
+  "vegetarian",
+  "gluten_free",
+  "dairy_free",
+  "nut_free",
+  "halal_friendly",
+]);
+
+export const FiltersSchema = z.object({
+  ingredients: z
+    .array(z.string())
+    .describe("the ingredients that the user wants to use"),
+  constraints: z
+    .array(DietSchema)
+    .describe("the dietary constraints that the user has"),
+  cuisine: z.string().describe("the cuisine that the user wants to use"),
+  time_minutes: z
+    .number()
+    .describe("the time in minutes that the user wants to spend on the recipe"),
+  intent: z
+    .enum(["search_recipes", "pick_candidate", "other"])
+    .describe(
+      "the intent of the user: is he picking a recipe from the list or searching for a new recipe or asking other questions",
+    ),
+});
+type Diet = z.infer<typeof DietSchema>;
+
+type Filters = z.infer<typeof FiltersSchema>;
+export type Candidate = {
   id: string;
   title: string;
-  cuisine?: string;
-  diet: DietTag[];
-  ingredients: IngredientQty[]; // canonical names
-  steps: string[]; // 6–12 short steps
-  time_minutes: number; // total est.
-  notes?: string[]; // optional tips
+  cuisine: string;
+  time: number;
+  diet: Diet[];
+  totalRequiredIngredients: number;
+  satisfiedIngredients: number;
+  satisfactionRatio: number;
+  avgCombinedScore: number;
+  overallScore: number;
+  missingIngredients: string[];
+  ingredientMatches: {
+    requiredIngredient: string;
+    sourceIngredient: string;
+    matchType: "direct" | "substitute";
+    similarity: number;
+    substitutionQuality: number;
+    combinedScore: number;
+  }[];
 };
 
-export type SubRule = {
-  from: string; // canonical ingredient
-  to: string[]; // 1..N suggestions
-  diets?: DietTag[]; // valid for these diets
-  ratio?: string; // e.g., "1:1", "1 egg → 1 Tbsp flax + 3 Tbsp water"
-  quality: 1 | 2 | 3; // 3=excellent, 1=acceptable
-  notes?: string;
+export type Facts = {
+  filters: Filters;
+  graphCandidates: Candidate[];
+  semanticCandidates: Candidate[];
+  candidates: Candidate[];
+  flags: { didRetrieval: boolean; didAskForMoreContext: boolean };
 };
 
-export const StateZ = z.object({
-  userMessage: z.string(),
-  parsed: z
-    .object({
-      ingredients: z.array(z.string()).default([]),
-      constraints: z.array(z.string()).default([]),
-    })
-    .default({ ingredients: [], constraints: [] }),
-  retrieved: z.array(z.any()).default([]), // recipe docs
-  candidates: z.array(z.any()).default([]),
-  final: z.string().optional(), // rendered markdown
-  citations: z.array(z.string()).default([]),
+export const GraphState = Annotation.Root({
+  messages: Annotation<BaseMessage[]>({
+    reducer: (x, y) => x.concat(y),
+    default: () => [],
+  }),
+  facts: Annotation<Facts>({
+    reducer: (x, y) => ({ ...x, ...y }),
+    default: () => ({
+      filters: {
+        ingredients: [],
+        constraints: [],
+        cuisine: "",
+        time_minutes: 0,
+        intent: "search_recipes",
+      },
+      candidates: [],
+      graphCandidates: [],
+      semanticCandidates: [],
+      flags: { didRetrieval: false, didAskForMoreContext: false },
+    }),
+  }),
 });
-export type State = z.infer<typeof StateZ>;
+export type State = typeof GraphState.State;
