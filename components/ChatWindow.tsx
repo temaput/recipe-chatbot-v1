@@ -173,12 +173,6 @@ export function ChatWindow(props: {
   showIngestForm?: boolean;
   showIntermediateStepsToggle?: boolean;
 }) {
-  const [showIntermediateSteps, setShowIntermediateSteps] = useState(
-    !!props.showIntermediateStepsToggle,
-  );
-  const [intermediateStepsLoading, setIntermediateStepsLoading] =
-    useState(false);
-
   const [sourcesForMessages, setSourcesForMessages] = useState<
     Record<string, any>
   >({});
@@ -187,7 +181,7 @@ export function ChatWindow(props: {
 
   const chat = useChat({
     body: {
-      threadid: threadId.current,
+      threadId: threadId.current,
     },
     api: props.endpoint,
     onResponse(response) {
@@ -213,85 +207,9 @@ export function ChatWindow(props: {
 
   async function sendMessage(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    if (chat.isLoading || intermediateStepsLoading) return;
+    if (chat.isLoading) return;
 
-    if (!showIntermediateSteps) {
-      chat.handleSubmit(e);
-      return;
-    }
-
-    // Some extra work to show intermediate steps properly
-    setIntermediateStepsLoading(true);
-
-    chat.setInput("");
-    const messagesWithUserReply = chat.messages.concat({
-      id: chat.messages.length.toString(),
-      content: chat.input,
-      role: "user",
-    });
-    chat.setMessages(messagesWithUserReply);
-
-    const response = await fetch(props.endpoint, {
-      method: "POST",
-      body: JSON.stringify({
-        messages: messagesWithUserReply,
-        show_intermediate_steps: true,
-      }),
-    });
-    const json = await response.json();
-    setIntermediateStepsLoading(false);
-
-    if (!response.ok) {
-      toast.error(`Error while processing your request`, {
-        description: json.error,
-      });
-      return;
-    }
-
-    const responseMessages: Message[] = json.messages;
-
-    // Represent intermediate steps as system messages for display purposes
-    // TODO: Add proper support for tool messages
-    const toolCallMessages = responseMessages.filter(
-      (responseMessage: Message) => {
-        return (
-          (responseMessage.role === "assistant" &&
-            !!responseMessage.tool_calls?.length) ||
-          responseMessage.role === "tool"
-        );
-      },
-    );
-
-    const intermediateStepMessages = [];
-    for (let i = 0; i < toolCallMessages.length; i += 2) {
-      const aiMessage = toolCallMessages[i];
-      const toolMessage = toolCallMessages[i + 1];
-      intermediateStepMessages.push({
-        id: (messagesWithUserReply.length + i / 2).toString(),
-        role: "system" as const,
-        content: JSON.stringify({
-          action: aiMessage.tool_calls?.[0],
-          observation: toolMessage.content,
-        }),
-      });
-    }
-    const newMessages = messagesWithUserReply;
-    for (const message of intermediateStepMessages) {
-      newMessages.push(message);
-      chat.setMessages([...newMessages]);
-      await new Promise((resolve) =>
-        setTimeout(resolve, 1000 + Math.random() * 1000),
-      );
-    }
-
-    chat.setMessages([
-      ...newMessages,
-      {
-        id: newMessages.length.toString(),
-        content: responseMessages[responseMessages.length - 1].content,
-        role: "assistant",
-      },
-    ]);
+    chat.handleSubmit(e);
   }
 
   return (
@@ -313,7 +231,7 @@ export function ChatWindow(props: {
           value={chat.input}
           onChange={chat.handleInputChange}
           onSubmit={sendMessage}
-          loading={chat.isLoading || intermediateStepsLoading}
+          loading={chat.isLoading}
           placeholder={props.placeholder ?? "What's it like to be a pirate?"}
         >
           {props.showIngestForm && (
@@ -338,21 +256,6 @@ export function ChatWindow(props: {
                 <UploadDocumentsForm />
               </DialogContent>
             </Dialog>
-          )}
-
-          {props.showIntermediateStepsToggle && (
-            <div className="flex items-center gap-2">
-              <Checkbox
-                id="show_intermediate_steps"
-                name="show_intermediate_steps"
-                checked={showIntermediateSteps}
-                disabled={chat.isLoading || intermediateStepsLoading}
-                onCheckedChange={(e) => setShowIntermediateSteps(!!e)}
-              />
-              <label htmlFor="show_intermediate_steps" className="text-sm">
-                Show intermediate steps
-              </label>
-            </div>
           )}
         </ChatInput>
       }

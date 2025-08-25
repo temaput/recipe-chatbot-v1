@@ -9,8 +9,6 @@ import {
 } from "@langchain/core/messages";
 import { graph as agent } from "./agent";
 
-export const runtime = "edge";
-
 const convertVercelMessageToLangChainMessage = (message: VercelChatMessage) => {
   if (message.role === "user") {
     return new HumanMessage(message.content);
@@ -18,20 +16,6 @@ const convertVercelMessageToLangChainMessage = (message: VercelChatMessage) => {
     return new AIMessage(message.content);
   } else {
     return new ChatMessage(message.content, message.role);
-  }
-};
-
-const convertLangChainMessageToVercelMessage = (message: BaseMessage) => {
-  if (message._getType() === "human") {
-    return { content: message.content, role: "user" };
-  } else if (message._getType() === "ai") {
-    return {
-      content: message.content,
-      role: "assistant",
-      tool_calls: (message as AIMessage).tool_calls,
-    };
-  } else {
-    return { content: message.content, role: message._getType() };
   }
 };
 
@@ -74,18 +58,26 @@ export async function POST(req: NextRequest) {
      *
      * See: https://langchain-ai.github.io/langgraphjs/how-tos/stream-tokens/
      */
-    const eventStream = await agent.streamEvents(
+
+    const eventStream = agent.streamEvents(
       {
         messages,
       },
-      { version: "v2", configurable: { thread_id: threadId } },
+      {
+        version: "v2",
+        configurable: { thread_id: threadId },
+        streamMode: "messages",
+      },
     );
 
     const textEncoder = new TextEncoder();
     const transformStream = new ReadableStream({
       async start(controller) {
-        for await (const { event, data } of eventStream) {
-          if (event === "on_chat_model_stream") {
+        for await (const { event, data, name, metadata } of eventStream) {
+          if (
+            event === "on_chat_model_stream" &&
+            !metadata?.tags?.includes("nostream")
+          ) {
             // Intermediate chat model generations will contain tool calls and no content
             if (!!data.chunk.content) {
               controller.enqueue(textEncoder.encode(data.chunk.content));

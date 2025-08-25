@@ -11,6 +11,11 @@ const chatModel = new ChatOpenAI({
   temperature: 0.2,
 });
 
+const internalLLM = new ChatOpenAI({
+  model: "gpt-4o-mini",
+  temperature: 0.2,
+});
+
 const n4jDriver = neo4j.driver(
   process.env.NEO4J_URI!,
   neo4j.auth.basic(process.env.NEO4J_USERNAME!, process.env.NEO4J_PASSWORD!),
@@ -146,7 +151,7 @@ const Nodes = {
       state.messages.slice(-2).map((m) => m.content),
     );
 
-    const response = await chatModel
+    const response = await internalLLM
       .withStructuredOutput(FiltersSchema)
       .invoke([
         new HumanMessage(
@@ -272,7 +277,9 @@ function shouldContinue(state: State) {
 }
 
 export const graph = new StateGraph(GraphState)
-  .addNode(NodeName.Parser, Nodes[NodeName.Parser])
+  .addNode(NodeName.Parser, Nodes[NodeName.Parser], {
+    metadata: { tags: ["nostream"] },
+  })
   .addNode(NodeName.Router, Nodes[NodeName.Router])
   .addNode(NodeName.GraphSearch, Nodes[NodeName.GraphSearch])
   .addNode(NodeName.SemanticSearch, Nodes[NodeName.SemanticSearch])

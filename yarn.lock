@@ -1049,40 +1049,40 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@langchain/core@npm:^0.3.43":
-  version: 0.3.43
-  resolution: "@langchain/core@npm:0.3.43"
+"@langchain/core@npm:latest":
+  version: 0.3.72
+  resolution: "@langchain/core@npm:0.3.72"
   dependencies:
     "@cfworker/json-schema": ^4.0.2
     ansi-styles: ^5.0.0
     camelcase: 6
     decamelize: 1.2.0
     js-tiktoken: ^1.0.12
-    langsmith: ">=0.2.8 <0.4.0"
+    langsmith: ^0.3.46
     mustache: ^4.2.0
     p-queue: ^6.6.2
     p-retry: 4
     uuid: ^10.0.0
-    zod: ^3.22.4
+    zod: ^3.25.32
     zod-to-json-schema: ^3.22.3
-  checksum: 5e5e9cd1ce39891177bc1d0d240785b60edeb0f9d53bb78a2ce394adf6fd15b972b63fb7a9d13c1f7b1341c79631baaa77225f6df36f509d0a606fb350f1d60f
+  checksum: 6170407bf57d31cd03384033edb063e3860dae977044022a2ffdcd21996f00635b85f39899a7d20d95fc2370396728403a7baff3d663cb4f10bd7d67d4d78861
   languageName: node
   linkType: hard
 
-"@langchain/langgraph-checkpoint@npm:~0.0.16":
-  version: 0.0.16
-  resolution: "@langchain/langgraph-checkpoint@npm:0.0.16"
+"@langchain/langgraph-checkpoint@npm:^0.1.0":
+  version: 0.1.0
+  resolution: "@langchain/langgraph-checkpoint@npm:0.1.0"
   dependencies:
     uuid: ^10.0.0
   peerDependencies:
     "@langchain/core": ">=0.2.31 <0.4.0"
-  checksum: ca0d169256f4b82e050297af536d4e8d24b47cd7ea029925845a3b3ae06eaef1fcca566ad9851a608b46f2fe5ff1de77a66d86fcaa808de26b7c97a9afdc061c
+  checksum: 1a2427fde5b1e0372603d25d749279fee4648b230d4258674ac0771f10d3e7ba79554c7ee9e1acdae2b08190a1dc7505a31f3f807c7a20572cb7fa5572875619
   languageName: node
   linkType: hard
 
-"@langchain/langgraph-sdk@npm:^0.0.60":
-  version: 0.0.60
-  resolution: "@langchain/langgraph-sdk@npm:0.0.60"
+"@langchain/langgraph-sdk@npm:~0.0.109":
+  version: 0.0.109
+  resolution: "@langchain/langgraph-sdk@npm:0.0.109"
   dependencies:
     "@types/json-schema": ^7.0.15
     p-queue: ^6.6.2
@@ -1091,38 +1091,33 @@ __metadata:
   peerDependencies:
     "@langchain/core": ">=0.2.31 <0.4.0"
     react: ^18 || ^19
+    react-dom: ^18 || ^19
   peerDependenciesMeta:
     "@langchain/core":
       optional: true
     react:
       optional: true
-  checksum: c5d8ef65eaa7d1cbcf704a37b4e443ffdd179c0140651f81da01dcb30f3a213c61ae560e4062d3e30ce92d5ebb1c54c937bc84859ee6efa828b9af3406cd1e76
+    react-dom:
+      optional: true
+  checksum: 1cbba4b42c6498b28c2ded6afdc7ffc638b48e6c7aa034451c2c88640a4f9e1389e3cf81bc97971902857a09c465f9d4307d2e1851f23b877668e84e5f648194
   languageName: node
   linkType: hard
 
-"@langchain/langgraph-sdk@npm:~0.0.32":
-  version: 0.0.36
-  resolution: "@langchain/langgraph-sdk@npm:0.0.36"
+"@langchain/langgraph@npm:latest":
+  version: 0.4.6
+  resolution: "@langchain/langgraph@npm:0.4.6"
   dependencies:
-    "@types/json-schema": ^7.0.15
-    p-queue: ^6.6.2
-    p-retry: 4
-    uuid: ^9.0.0
-  checksum: 7e14529ad7190681ac53c18f7e46b9854c4185c5cac30fec711eb3149d146e1f4fdb141d454793262a7e0e2cb5970b91f3ebec4b904bfb9cb32b3862cfd775ec
-  languageName: node
-  linkType: hard
-
-"@langchain/langgraph@npm:^0.2.57":
-  version: 0.2.57
-  resolution: "@langchain/langgraph@npm:0.2.57"
-  dependencies:
-    "@langchain/langgraph-checkpoint": ~0.0.16
-    "@langchain/langgraph-sdk": ~0.0.32
+    "@langchain/langgraph-checkpoint": ^0.1.0
+    "@langchain/langgraph-sdk": ~0.0.109
     uuid: ^10.0.0
-    zod: ^3.23.8
+    zod: ^3.25.32
   peerDependencies:
-    "@langchain/core": ">=0.2.36 <0.3.0 || >=0.3.40 < 0.4.0"
-  checksum: d0c695f3db2b1a464fdb94a29fccb42a91530c26af953d5d88042fb1082662dc85baff046791802d7a553d7bf37d32fb77a54e167df0411951b68400af7a16ba
+    "@langchain/core": ">=0.3.58 < 0.4.0"
+    zod-to-json-schema: ^3.x
+  peerDependenciesMeta:
+    zod-to-json-schema:
+      optional: true
+  checksum: ad29fbbcdf1411ad65a1fe79c439380bf0c70aa82aab776b13d1a9ccf52501bebbf3f1b7c759c96a8972a3715f26c99cca6484b53d4d023da964284124e9eb8e
   languageName: node
   linkType: hard
 
@@ -1760,77 +1755,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@supabase/auth-js@npm:2.65.0":
-  version: 2.65.0
-  resolution: "@supabase/auth-js@npm:2.65.0"
-  dependencies:
-    "@supabase/node-fetch": ^2.6.14
-  checksum: c6396f6c384f4787352a09e40c192cbf990dd566773b6e55eb7921726052144bfe592e2550bd1bd743545af3a03b2602ef41a9e69f9f966f84923049d0128404
-  languageName: node
-  linkType: hard
-
-"@supabase/functions-js@npm:2.4.1":
-  version: 2.4.1
-  resolution: "@supabase/functions-js@npm:2.4.1"
-  dependencies:
-    "@supabase/node-fetch": ^2.6.14
-  checksum: 786a1499b26b928f39b9af68b44bfc0a016c525d85c6b8bd2f6cd712e53db3ab5099ed4e7b1038ae8527dcee16a3aa8f80618a7227d322052810d378746d7154
-  languageName: node
-  linkType: hard
-
-"@supabase/node-fetch@npm:2.6.15, @supabase/node-fetch@npm:^2.6.14":
-  version: 2.6.15
-  resolution: "@supabase/node-fetch@npm:2.6.15"
-  dependencies:
-    whatwg-url: ^5.0.0
-  checksum: 9673b49236a56df49eb7ea5cb789cf4e8b1393069b84b4964ac052995e318a34872f428726d128f232139e17c3375a531e45e99edd3e96a25cce60d914b53879
-  languageName: node
-  linkType: hard
-
-"@supabase/postgrest-js@npm:1.15.8":
-  version: 1.15.8
-  resolution: "@supabase/postgrest-js@npm:1.15.8"
-  dependencies:
-    "@supabase/node-fetch": ^2.6.14
-  checksum: b2081f76356f35f76e9e6f2e1b4dd1528c96404f4feeebf1ebb8068fb726e182c06f77cbd151c00d751ad9d69bcab4596dd68bf5c90ee7ace2ac22695bed3268
-  languageName: node
-  linkType: hard
-
-"@supabase/realtime-js@npm:2.10.2":
-  version: 2.10.2
-  resolution: "@supabase/realtime-js@npm:2.10.2"
-  dependencies:
-    "@supabase/node-fetch": ^2.6.14
-    "@types/phoenix": ^1.5.4
-    "@types/ws": ^8.5.10
-    ws: ^8.14.2
-  checksum: a98342e6a8437c2c14a86728abd12f21d853f167fb22ede46ef680cc0ef990bf7c8a8403c448ab335d884cfe8c3b2f6c4e3363dcb777511ee3abb6270d65a954
-  languageName: node
-  linkType: hard
-
-"@supabase/storage-js@npm:2.7.0":
-  version: 2.7.0
-  resolution: "@supabase/storage-js@npm:2.7.0"
-  dependencies:
-    "@supabase/node-fetch": ^2.6.14
-  checksum: 1796214103d0afae0d9e960bd22cbd621f746a845c56e409a5a7fa88cbdfcec6a53ac0ffb6b5197ec88540c8c17a5cc888ec3edf5928b48b83bb7f315a17465c
-  languageName: node
-  linkType: hard
-
-"@supabase/supabase-js@npm:^2.32.0":
-  version: 2.45.3
-  resolution: "@supabase/supabase-js@npm:2.45.3"
-  dependencies:
-    "@supabase/auth-js": 2.65.0
-    "@supabase/functions-js": 2.4.1
-    "@supabase/node-fetch": 2.6.15
-    "@supabase/postgrest-js": 1.15.8
-    "@supabase/realtime-js": 2.10.2
-    "@supabase/storage-js": 2.7.0
-  checksum: ab71ceeb259a70cde4fe16aa2a36df28a57e6e0ab6f1af71ff9ce8406b55a94546e7060fa3954b6f846d5938bb401d517bfcd17df30f55764ac669d6834f93bc
-  languageName: node
-  linkType: hard
-
 "@swc/counter@npm:0.1.3":
   version: 0.1.3
   resolution: "@swc/counter@npm:0.1.3"
@@ -1905,13 +1829,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/phoenix@npm:^1.5.4":
-  version: 1.6.5
-  resolution: "@types/phoenix@npm:1.6.5"
-  checksum: b87416393159f0ba2812875fc2721914a3284cde8b1f263dfcd46f4149dae7f4efc2bfa062d558c8bbfb7ae2a9d802487b0dd4744ff08799386cbc49c19368f0
-  languageName: node
-  linkType: hard
-
 "@types/prop-types@npm:*":
   version: 15.7.12
   resolution: "@types/prop-types@npm:15.7.12"
@@ -1966,15 +1883,6 @@ __metadata:
   version: 10.0.0
   resolution: "@types/uuid@npm:10.0.0"
   checksum: e3958f8b0fe551c86c14431f5940c3470127293280830684154b91dc7eb3514aeb79fe3216968833cf79d4d1c67f580f054b5be2cd562bebf4f728913e73e944
-  languageName: node
-  linkType: hard
-
-"@types/ws@npm:^8.5.10":
-  version: 8.5.12
-  resolution: "@types/ws@npm:8.5.12"
-  dependencies:
-    "@types/node": "*"
-  checksum: ddefb6ad1671f70ce73b38a5f47f471d4d493864fca7c51f002a86e5993d031294201c5dced6d5018fb8905ad46888d65c7f20dd54fc165910b69f42fba9a6d0
   languageName: node
   linkType: hard
 
@@ -4581,16 +4489,14 @@ __metadata:
   resolution: "langchain-nextjs-template@workspace:."
   dependencies:
     "@langchain/community": ^0.3.37
-    "@langchain/core": ^0.3.43
-    "@langchain/langgraph": ^0.2.57
-    "@langchain/langgraph-sdk": ^0.0.60
+    "@langchain/core": latest
+    "@langchain/langgraph": latest
     "@langchain/openai": ^0.4.9
     "@next/bundle-analyzer": ^13.4.19
     "@radix-ui/react-checkbox": ^1.1.3
     "@radix-ui/react-dialog": ^1.1.4
     "@radix-ui/react-popover": ^1.1.4
     "@radix-ui/react-slot": ^1.1.1
-    "@supabase/supabase-js": ^2.32.0
     "@types/node": 20.12.12
     "@types/react": 18.3.2
     "@types/react-dom": 18.3.0
@@ -4797,6 +4703,35 @@ __metadata:
     openai:
       optional: true
   checksum: d47998e3610a89eae71fe9e2b6b4d43ba155b1880aa6e5714ad819f2f2a703edebc8b493745ceeee32f00fa77162e481790fc0b627436f76aa15fea51d8de937
+  languageName: node
+  linkType: hard
+
+"langsmith@npm:^0.3.46":
+  version: 0.3.63
+  resolution: "langsmith@npm:0.3.63"
+  dependencies:
+    "@types/uuid": ^10.0.0
+    chalk: ^4.1.2
+    console-table-printer: ^2.12.1
+    p-queue: ^6.6.2
+    p-retry: 4
+    semver: ^7.6.3
+    uuid: ^10.0.0
+  peerDependencies:
+    "@opentelemetry/api": "*"
+    "@opentelemetry/exporter-trace-otlp-proto": "*"
+    "@opentelemetry/sdk-trace-base": "*"
+    openai: "*"
+  peerDependenciesMeta:
+    "@opentelemetry/api":
+      optional: true
+    "@opentelemetry/exporter-trace-otlp-proto":
+      optional: true
+    "@opentelemetry/sdk-trace-base":
+      optional: true
+    openai:
+      optional: true
+  checksum: 75ad11adb20722a68f7b434b37edf6622af14095843b792e014db8a8f3195673b84eb8df2a7f1b943c2207ffb820c964c969b01419fe26ff59692b40d2a94b1a
   languageName: node
   linkType: hard
 
@@ -7247,21 +7182,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"ws@npm:^8.14.2":
-  version: 8.18.0
-  resolution: "ws@npm:8.18.0"
-  peerDependencies:
-    bufferutil: ^4.0.1
-    utf-8-validate: ">=5.0.2"
-  peerDependenciesMeta:
-    bufferutil:
-      optional: true
-    utf-8-validate:
-      optional: true
-  checksum: 91d4d35bc99ff6df483bdf029b9ea4bfd7af1f16fc91231a96777a63d263e1eabf486e13a2353970efc534f9faa43bdbf9ee76525af22f4752cbc5ebda333975
-  languageName: node
-  linkType: hard
-
 "yallist@npm:^4.0.0":
   version: 4.0.0
   resolution: "yallist@npm:4.0.0"
@@ -7298,5 +7218,12 @@ __metadata:
   version: 3.23.8
   resolution: "zod@npm:3.23.8"
   checksum: 15949ff82118f59c893dacd9d3c766d02b6fa2e71cf474d5aa888570c469dbf5446ac5ad562bb035bf7ac9650da94f290655c194f4a6de3e766f43febd432c5c
+  languageName: node
+  linkType: hard
+
+"zod@npm:^3.25.32":
+  version: 3.25.76
+  resolution: "zod@npm:3.25.76"
+  checksum: c9a403a62b329188a5f6bd24d5d935d2bba345f7ab8151d1baa1505b5da9f227fb139354b043711490c798e91f3df75991395e40142e6510a4b16409f302b849
   languageName: node
   linkType: hard
