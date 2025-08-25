@@ -125,7 +125,7 @@ enum NodeName {
   GraphSearch = "graph_search",
   SemanticSearch = "semantic_search",
   Retrieve = "retrieve",
-  AskToPickCandidate = "ask_to_pick_candidate",
+  HandleManyCandidates = "handle_many_candidates",
   HandleNoCandidates = "handle_no_candidates",
   Done = "done",
 }
@@ -224,7 +224,7 @@ const Nodes = {
     f.semanticCandidates = await semanticSearch(query, f);
     return { facts: f };
   },
-  [NodeName.AskToPickCandidate]: async (state: State) => {
+  [NodeName.HandleManyCandidates]: async (state: State) => {
     const f = state.facts;
     if (!f.flags.didAskForMoreContext) {
       const availableConstraints = [
@@ -296,9 +296,11 @@ const Nodes = {
 function shouldContinue(state: State) {
   const f = state.facts;
   if (f.filters.intent !== "search_recipes") return NodeName.Done;
-  if (state.facts.candidates.length > 1) return NodeName.AskToPickCandidate;
-  if (state.facts.candidates.length === 0 && !f.flags.didRetrieval)
-    return NodeName.Retrieve;
+  if (state.facts.candidates.length > 1) return NodeName.HandleManyCandidates;
+  if (state.facts.candidates.length === 0) {
+    if (!f.flags.didRetrieval) return NodeName.Retrieve;
+    if (f.flags.didRetrieval) return NodeName.HandleNoCandidates;
+  }
   return NodeName.Done;
 }
 
@@ -309,7 +311,7 @@ export const graph = new StateGraph(GraphState)
   .addNode(NodeName.Router, Nodes[NodeName.Router])
   .addNode(NodeName.GraphSearch, Nodes[NodeName.GraphSearch])
   .addNode(NodeName.SemanticSearch, Nodes[NodeName.SemanticSearch])
-  .addNode(NodeName.AskToPickCandidate, Nodes[NodeName.AskToPickCandidate])
+  .addNode(NodeName.HandleManyCandidates, Nodes[NodeName.HandleManyCandidates])
   .addNode(NodeName.HandleNoCandidates, Nodes[NodeName.HandleNoCandidates])
   .addNode(NodeName.Done, Nodes[NodeName.Done])
   .addNode(NodeName.Retrieve, Nodes[NodeName.Retrieve])
@@ -321,7 +323,7 @@ export const graph = new StateGraph(GraphState)
   .addEdge(NodeName.GraphSearch, NodeName.Router)
   .addEdge(NodeName.SemanticSearch, NodeName.Router)
   .addEdge(NodeName.HandleNoCandidates, END)
-  .addEdge(NodeName.AskToPickCandidate, END)
+  .addEdge(NodeName.HandleManyCandidates, END)
   .addEdge(NodeName.Done, END)
   .compile({
     checkpointer,

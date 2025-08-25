@@ -30,7 +30,7 @@ export default function AgentsPage() {
       // showIngestForm={true}
       showIntermediateStepsToggle={false}
       placeholder={
-        'Hello, dear! I\'m your cooking grandma. Ask me about your favorite recipes: "How to make homemade bread?" or "Share a secret for delicious jam!"'
+        'Hello, dear! I\'m your cooking grandma. What would you like to cook today?'
       }
       emoji="👵"
     />
