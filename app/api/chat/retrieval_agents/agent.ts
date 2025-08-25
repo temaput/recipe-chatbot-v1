@@ -1,10 +1,18 @@
-import { StateGraph, MemorySaver } from "@langchain/langgraph";
+import { StateGraph } from "@langchain/langgraph";
 import { HumanMessage, SystemMessage } from "@langchain/core/messages";
 import { ChatOpenAI } from "@langchain/openai";
 import { END } from "@langchain/langgraph";
 import neo4j from "neo4j-driver";
 import { findRecipesByIngredientsQuery } from "@/data/RecipeQueries";
 import { Facts, Candidate, State, GraphState, FiltersSchema } from "./types";
+import { PostgresSaver } from "@langchain/langgraph-checkpoint-postgres";
+
+const checkpointer = PostgresSaver.fromConnString(
+  process.env.NEON_CONNECTION_STRING!,
+);
+
+// NOTE: you need to call .setup() the first time you're using your checkpointer
+await checkpointer.setup();
 
 const chatModel = new ChatOpenAI({
   model: "gpt-4o-mini",
@@ -316,5 +324,5 @@ export const graph = new StateGraph(GraphState)
   .addEdge(NodeName.AskToPickCandidate, END)
   .addEdge(NodeName.Done, END)
   .compile({
-    checkpointer: new MemorySaver(),
+    checkpointer,
   });
