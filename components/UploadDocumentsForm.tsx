@@ -18,7 +18,7 @@ export function UploadDocumentsForm() {
       }),
     });
     if (response.status === 200) {
-      setDocument("Uploaded!");
+      setDocument("Recipes uploaded!");
     } else {
       const json = await response.json();
       if (json.error) {
@@ -55,9 +55,9 @@ export function UploadDocumentsForm() {
               fill="currentFill"
             />
           </svg>
-          <span className="sr-only">Loading...</span>
+          <span className="sr-only">Uploading...</span>
         </div>
-        <span className={isLoading ? "hidden" : ""}>Upload</span>
+        <span className={isLoading ? "hidden" : ""}>Upload Recipes</span>
       </Button>
     </form>
   );

@@ -1,56 +1,36 @@
 <svg width="120" height="120" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="bgGradient" cx="0.3" cy="0.3" r="0.8">
+      <stop offset="0%" stop-color="#fefaec"/>
+      <stop offset="100%" stop-color="#f6d073"/>
+    </radialGradient>
+  </defs>
+  
   <!-- Background Circle -->
-  <circle cx="60" cy="60" r="58" fill="#FF6B6B" stroke="#FF5252" stroke-width="4"/>
+  <circle cx="60" cy="60" r="56" fill="url(#bgGradient)" stroke="#e8c545" stroke-width="3"/>
   
-  <!-- Chef Hat -->
-  <path d="M35 45 C35 35, 45 30, 60 30 C75 30, 85 35, 85 45 C85 40, 80 35, 75 35 C70 30, 65 32, 60 32 C55 32, 50 30, 45 35 C40 35, 35 40, 35 45 Z" fill="white"/>
-  <rect x="38" y="45" width="44" height="8" fill="white" rx="2"/>
+  <!-- Main pot and spoon silhouette -->
+  <g fill="#685142" stroke="none">
+    <!-- Main pot body - centered -->
+    <path d="M32 55 L32 80 Q32 92, 42 95 L78 95 Q88 92, 88 80 L88 55 Z"/>
+    
+    <!-- Pot rim/top -->
+    <ellipse cx="60" cy="55" rx="28" ry="3"/>
+    
+    <!-- Left handle -->
+    <path d="M26 62 Q21 62, 21 67 Q21 72, 26 72 L32 70 L32 64 Z"/>
+    
+    <!-- Right handle -->
+    <path d="M94 62 Q99 62, 99 67 Q99 72, 94 72 L88 70 L88 64 Z"/>
+    
+    <!-- Cooking spoon -->
+    <ellipse cx="72" cy="52" rx="8" ry="3" transform="rotate(15 72 52)"/>
+    <rect x="76" y="35" width="3" height="20" transform="rotate(15 76 35)"/>
+    
+    <!-- Pot interior -->
+    <ellipse cx="60" cy="56" rx="24" ry="2" fill="#544539"/>
+  </g>
   
-  <!-- Robot Face Base -->
-  <rect x="42" y="55" width="36" height="32" fill="#4ECDC4" rx="8" stroke="#26A69A" stroke-width="2"/>
-  
-  <!-- Eyes -->
-  <circle cx="50" cy="65" r="4" fill="#2E7D32"/>
-  <circle cx="70" cy="65" r="4" fill="#2E7D32"/>
-  <circle cx="50" cy="65" r="2" fill="#4CAF50"/>
-  <circle cx="70" cy="65" r="2" fill="#4CAF50"/>
-  
-  <!-- Mouth/Display -->
-  <rect x="47" y="75" width="26" height="6" fill="#2E7D32" rx="3"/>
-  <rect x="49" y="77" width="4" height="2" fill="#4CAF50"/>
-  <rect x="55" y="77" width="4" height="2" fill="#4CAF50"/>
-  <rect x="61" y="77" width="4" height="2" fill="#4CAF50"/>
-  <rect x="67" y="77" width="4" height="2" fill="#4CAF50"/>
-  
-  <!-- Cooking Utensils -->
-  <!-- Spatula -->
-  <rect x="25" y="70" width="3" height="20" fill="#8D6E63" rx="1"/>
-  <ellipse cx="26.5" cy="68" rx="3" ry="4" fill="#FFB74D"/>
-  
-  <!-- Whisk -->
-  <rect x="91" y="70" width="2" height="18" fill="#8D6E63"/>
-  <circle cx="92" cy="68" r="3" fill="#E0E0E0" stroke="#BDBDBD" stroke-width="1"/>
-  <line x1="90" y1="66" x2="90" y2="70" stroke="#BDBDBD" stroke-width="0.5"/>
-  <line x1="92" y1="65" x2="92" y2="71" stroke="#BDBDBD" stroke-width="0.5"/>
-  <line x1="94" y1="66" x2="94" y2="70" stroke="#BDBDBD" stroke-width="0.5"/>
-  
-  <!-- Recipe Elements -->
-  <!-- Steam lines -->
-  <path d="M45 25 Q47 20, 45 15" stroke="#E0E0E0" stroke-width="2" fill="none" stroke-linecap="round"/>
-  <path d="M55 25 Q57 20, 55 15" stroke="#E0E0E0" stroke-width="2" fill="none" stroke-linecap="round"/>
-  <path d="M65 25 Q67 20, 65 15" stroke="#E0E0E0" stroke-width="2" fill="none" stroke-linecap="round"/>
-  <path d="M75 25 Q77 20, 75 15" stroke="#E0E0E0" stroke-width="2" fill="none" stroke-linecap="round"/>
-  
-  <!-- Recipe Book -->
-  <rect x="15" y="95" width="20" height="15" fill="#FF9800" rx="2"/>
-  <rect x="17" y="97" width="16" height="11" fill="#FFF3E0" rx="1"/>
-  <line x1="19" y1="100" x2="31" y2="100" stroke="#FF9800" stroke-width="1"/>
-  <line x1="19" y1="103" x2="29" y2="103" stroke="#FF9800" stroke-width="1"/>
-  <line x1="19" y1="106" x2="31" y2="106" stroke="#FF9800" stroke-width="1"/>
-  
-  <!-- Ingredients -->
-  <circle cx="90" cy="100" r="8" fill="#4CAF50"/>
-  <circle cx="88" cy="98" r="2" fill="#2E7D32"/>
-  <circle cx="92" cy="98" r="2" fill="#2E7D32"/>
-  <path d="M85 102 Q90 105, 95 102" stroke="#2E7D32" stroke-width="1.5" fill="none"/>
+  <!-- Subtle pot body highlight -->
+  <ellipse cx="50" cy="70" rx="10" ry="15" fill="#9a7558" opacity="0.2"/>
 </svg>

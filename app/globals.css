@@ -4,49 +4,51 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 47.4% 11.2%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 47.4% 11.2%;
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 100% 50%;
-    --destructive-foreground: 210 40% 98%;
-    --ring: 215 20.2% 65.1%;
+    /* Grandma's Recipe Theme - Light mode with warm, cozy colors */
+    --background: 45 50% 97%; /* cream-50 - very light warm cream */
+    --foreground: 25 20% 25%; /* warm brown for text */
+    --muted: 40 30% 92%; /* cream-100 - soft cream */
+    --muted-foreground: 25 15% 45%; /* warm brown muted */
+    --popover: 45 50% 98%; /* lighter cream */
+    --popover-foreground: 25 20% 25%;
+    --border: 40 25% 85%; /* cream-200 - subtle warm border */
+    --input: 40 25% 88%; /* slightly lighter for inputs */
+    --card: 45 50% 98%; /* warm white cards */
+    --card-foreground: 25 20% 25%;
+    --primary: 35 75% 45%; /* honey-600 - warm golden primary */
+    --primary-foreground: 45 50% 98%;
+    --secondary: 60 20% 80%; /* sage-300 - soft herbal green */
+    --secondary-foreground: 25 20% 25%;
+    --accent: 15 60% 60%; /* terracotta-500 - warm earthy accent */
+    --accent-foreground: 45 50% 98%;
+    --destructive: 0 70% 50%; /* warm red for errors */
+    --destructive-foreground: 45 50% 98%;
+    --ring: 35 50% 50%; /* honey focus ring */
     --radius: 0.5rem;
   }
 
   @media (prefers-color-scheme: dark) {
     :root {
-      --background: 224 71% 4%;
-      --foreground: 213 31% 91%;
-      --muted: 223 47% 11%;
-      --muted-foreground: 215.4 16.3% 56.9%;
-      --accent: 216 34% 17%;
-      --accent-foreground: 210 40% 98%;
-      --popover: 224 71% 4%;
-      --popover-foreground: 215 20.2% 65.1%;
-      --border: 216 34% 17%;
-      --input: 216 34% 17%;
-      --card: 224 71% 4%;
-      --card-foreground: 213 31% 91%;
-      --primary: 210 40% 98%;
-      --primary-foreground: 222.2 47.4% 1.2%;
-      --secondary: 222.2 47.4% 11.2%;
-      --secondary-foreground: 210 40% 98%;
-      --destructive: 0 63% 31%;
-      --destructive-foreground: 210 40% 98%;
-      --ring: 216 34% 17%;
+      /* Grandma's Recipe Theme - Dark mode with warm evening tones */
+      --background: 25 25% 8%; /* deep warm brown */
+      --foreground: 40 30% 88%; /* warm cream text */
+      --muted: 25 20% 15%; /* dark warm brown */
+      --muted-foreground: 40 20% 60%; /* muted cream */
+      --popover: 25 25% 10%; /* slightly lighter dark brown */
+      --popover-foreground: 40 30% 85%;
+      --border: 25 20% 20%; /* warm dark borders */
+      --input: 25 20% 18%; /* input fields */
+      --card: 25 25% 10%; /* card background */
+      --card-foreground: 40 30% 88%;
+      --primary: 35 70% 55%; /* brighter honey for dark mode */
+      --primary-foreground: 25 25% 8%;
+      --secondary: 25 15% 25%; /* warm brown secondary */
+      --secondary-foreground: 40 30% 88%;
+      --accent: 15 55% 50%; /* terracotta accent */
+      --accent-foreground: 40 30% 88%;
+      --destructive: 0 60% 45%; /* warm red for dark mode */
+      --destructive-foreground: 40 30% 88%;
+      --ring: 35 60% 50%; /* honey focus ring */
     }
   }
 }
@@ -64,7 +66,7 @@
   }
 
   code {
-    @apply dark:text-orange-400 text-orange-700;
+    @apply dark:text-honey-400 text-terracotta-600 bg-cream-100 dark:bg-warmBrown-800 px-1 py-0.5 rounded text-sm;
   }
 
   li {
@@ -78,5 +80,34 @@
   .hide-scrollbar {
     -ms-overflow-style: none;
     scrollbar-width: none;
+  }
+
+  /* Grandma's Recipe Theme - Beautiful background patterns */
+  body {
+    background-image: 
+      radial-gradient(circle at 25% 25%, rgba(244, 217, 88, 0.1) 0%, transparent 50%),
+      radial-gradient(circle at 75% 75%, rgba(227, 114, 93, 0.08) 0%, transparent 50%),
+      radial-gradient(circle at 50% 0%, rgba(117, 141, 98, 0.05) 0%, transparent 50%);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    body {
+      background-image: 
+        radial-gradient(circle at 25% 25%, rgba(244, 217, 88, 0.05) 0%, transparent 50%),
+        radial-gradient(circle at 75% 75%, rgba(227, 114, 93, 0.03) 0%, transparent 50%),
+        radial-gradient(circle at 50% 0%, rgba(117, 141, 98, 0.02) 0%, transparent 50%);
+    }
+  }
+
+  /* Smooth transitions for all interactive elements */
+  button, input, textarea, select {
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* Custom focus styles for accessibility */
+  *:focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+    border-radius: 0.375rem;
   }
 }

@@ -77,12 +77,12 @@ export function ChatInput(props: {
       }}
       className={cn("flex w-full flex-col", props.className)}
     >
-      <div className="border border-input bg-secondary rounded-lg flex flex-col gap-2 max-w-[768px] w-full mx-auto">
+      <div className="border-2 border-sage-200 bg-gradient-to-br from-cream-50 to-honey-50 rounded-2xl flex flex-col gap-2 max-w-[768px] w-full mx-auto shadow-lg">
         <input
           value={props.value}
           placeholder={props.placeholder}
           onChange={props.onChange}
-          className="border-none outline-none bg-transparent p-4"
+          className="border-none outline-none bg-transparent p-4 text-warmBrown-800 placeholder:text-warmBrown-500 rounded-2xl"
         />
 
         <div className="flex justify-between ml-4 mr-2 mb-2">
@@ -94,7 +94,7 @@ export function ChatInput(props: {
               {props.loading ? (
                 <span role="status" className="flex justify-center">
                   <LoaderCircle className="animate-spin" />
-                  <span className="sr-only">Loading...</span>
+                  <span className="sr-only">Cooking...</span>
                 </span>
               ) : (
                 <span>Send</span>
@@ -232,7 +232,7 @@ export function ChatWindow(props: {
           onChange={chat.handleInputChange}
           onSubmit={sendMessage}
           loading={chat.isLoading}
-          placeholder={props.placeholder ?? "What's it like to be a pirate?"}
+          placeholder={props.placeholder ?? "Tell me what ingredients you have, and I'll suggest a delicious recipe!"}
         >
           {props.showIngestForm && (
             <Dialog>
@@ -243,14 +243,14 @@ export function ChatWindow(props: {
                   disabled={chat.messages.length !== 0}
                 >
                   <Paperclip className="size-4" />
-                  <span>Upload document</span>
+                  <span>Upload recipes</span>
                 </Button>
               </DialogTrigger>
               <DialogContent>
                 <DialogHeader>
-                  <DialogTitle>Upload document</DialogTitle>
+                  <DialogTitle>Upload recipes</DialogTitle>
                   <DialogDescription>
-                    Upload a document to use for the chat.
+                    Upload your favorite recipes to share with grandma.
                   </DialogDescription>
                 </DialogHeader>
                 <UploadDocumentsForm />
