@@ -54,9 +54,7 @@ WITH r, ingredientMatches, allRequiredIngredients,
 
 WHERE satisfiedIngredients > 0
 
-RETURN r.title, r.cuisine, r.id,
-       r.diet AS recipeDiets,
-       r.time_minutes AS time,
+RETURN r {.*, embedding: null}, 
        totalRequiredIngredients,
        satisfiedIngredients,
        size(missingIngredients) AS missingIngredientsCount,
@@ -72,5 +70,5 @@ LIMIT 10;
 export const getRecipeById = `
 MATCH (r:Recipe)
 WHERE r.id = $id
-RETURN r {.*} AS recipe
+RETURN r {.*, embedding: null} AS recipe
 `;

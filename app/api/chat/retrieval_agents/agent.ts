@@ -15,6 +15,7 @@ import { BaseMessage } from "@langchain/core/messages";
 import { END } from "@langchain/langgraph";
 import { DEFAULT_RECIPIES } from "@/data/DefaultRecipies";
 import neo4j from "neo4j-driver";
+import { findRecipesByIngredients, getRecipeById } from "@/data/RecipeQueries";
 
 const DietSchema = z.enum([
   "vegan",
@@ -37,9 +38,9 @@ const FiltersSchema = z.object({
     .number()
     .describe("the time in minutes that the user wants to spend on the recipe"),
   intent: z
-    .enum(["search_recipes", "pick_candidate"])
+    .enum(["search_recipes", "pick_candidate", "other"])
     .describe(
-      "the intent of the user: is he picking a recipe from the list or searching for a new recipe",
+      "the intent of the user: is he picking a recipe from the list or searching for a new recipe or asking other questions",
     ),
 });
 type Diet = z.infer<typeof DietSchema>;
@@ -51,8 +52,20 @@ type Candidate = {
   cuisine: string;
   time: number;
   diet: Diet[];
-  score: number;
-  ingredients: string[];
+  totalRequiredIngredients: number;
+  satisfiedIngredients: number;
+  satisfactionRatio: number;
+  avgCombinedScore: number;
+  overallScore: number;
+  missingIngredients: string[];
+  ingredientMatches: {
+    requiredIngredient: string;
+    sourceIngredient: string;
+    matchType: "direct" | "substitute";
+    similarity: number;
+    substitutionQuality: number;
+    combinedScore: number;
+  }[];
 };
 
 type Facts = {
@@ -60,7 +73,7 @@ type Facts = {
   graphCandidates: Candidate[];
   semanticCandidates: Candidate[];
   candidates: Candidate[];
-  iterations: number;
+  flags: { didRetrieval: boolean; didAskForMoreContext: boolean };
 };
 
 const GraphState = Annotation.Root({
@@ -81,7 +94,7 @@ const GraphState = Annotation.Root({
       candidates: [],
       graphCandidates: [],
       semanticCandidates: [],
-      iterations: 0,
+      flags: { didRetrieval: false, didAskForMoreContext: false },
     }),
   }),
 });
@@ -97,103 +110,77 @@ const n4jDriver = neo4j.driver(
   neo4j.auth.basic(process.env.NEO4J_USERNAME!, process.env.NEO4J_PASSWORD!),
 );
 
+function parseNeo4jObject(record: object) {
+  return Object.fromEntries(
+    Object.entries(record).map(([key, value]) => {
+      if (neo4j.isInt(value)) {
+        return [key, value.toNumber()];
+      }
+      return [key, value];
+    }),
+  );
+}
+
 async function graphSearch(facts: Facts): Promise<Candidate[]> {
   // expand via substitutions graph (respect dietsAllowed), score, return top-k
 
   const session = n4jDriver.session();
-  const n4jQuery = `
-  // $pantry: [string], $diet: [string], $maxHops: int (usually 1)
-  MATCH (p:Ingredient) WHERE toLower(p.name) IN $pantry
-  WITH collect(p) AS pantryNodes
 
-  // 1-hop substitutes valid for the user's diet
-  CALL {
-    WITH pantryNodes, $diet AS dietAllowed
-    MATCH (p IN pantryNodes)-[s:SUBS]->(alt:Ingredient)
-    WHERE size(s.dietsAllowed) = 0 OR any(d IN s.dietsAllowed WHERE d IN dietAllowed)
-    RETURN collect(alt) AS subs1
-  }
-
-  WITH pantryNodes + subs1 AS usable
-  MATCH (r:Recipe)-[req:REQUIRES]->(i:Ingredient)
-  WHERE i IN usable OR req.optional = true
-  WITH r, collect(req.optional = false AND NOT (i IN usable)) AS missingRequired
-  WHERE NOT any(x IN missingRequired WHERE x = true) // drop recipes that still miss required items
-  RETURN r LIMIT 20;
-  `;
-
-  const result = await session.run(n4jQuery, {
-    pantry: facts.filters.ingredients,
-    diet: facts.filters.constraints,
+  const result = await session.run(findRecipesByIngredients, {
+    ingredientList: facts.filters.ingredients.map((name) => ({ name })),
+    diets: facts.filters.constraints,
     maxHops: 1,
   });
-  const recipes = result.records.map((r) => r.get("r"));
+  const recipes = result.records.map((record) => {
+    // Convert Neo4j integers to regular numbers
+    const { r, ...rest } = parseNeo4jObject(record.toObject());
+    const candidate: Candidate = {
+      ...r,
+      ...rest,
+    };
+    return candidate;
+  });
+  console.log("recipes", JSON.stringify(recipes, null, 2));
   session.close();
-  return recipes.map((recipe) => ({
-    id: recipe.id,
-    title: recipe.title,
-    time: recipe.time_minutes,
-    diet: recipe.diet.map((d: string) => d as Diet),
-    cuisine: recipe.cuisine,
-    score: 0,
-    ingredients: recipe.ingredients.map((i: any) => i.name),
-  }));
+  return recipes;
 }
 async function semanticSearch(
   query: string,
   facts: Facts,
 ): Promise<Candidate[]> {
   // vector/RAG over recipes (local or Neo4jVector)
-  return [];
-  return DEFAULT_RECIPIES.map((recipe) => ({
-    id: recipe.id,
-    title: recipe.title,
-    time: recipe.time_minutes,
-    diet: recipe.diet.map((d) => d as Diet),
-    cuisine: recipe.cuisine,
-    ingredients: recipe.ingredients.map((i) => i.name),
-    score: 0,
-  }));
-}
-
-async function getRecipe(id: string) {
-  return DEFAULT_RECIPIES.find((r) => r.id === id);
+  if (!process.env.SEMANTIC_SEARCH_ENABLED) return [];
+  throw new Error("Semantic search is not implemented");
 }
 
 // ---- State methods ----
 
-function calculateDynamicScore(candidate: Candidate, state: State) {
+function calculateDynamicScore(candidate: Candidate, state: State): Candidate {
   const f = state.facts;
-  let score = 0;
-  if (f.filters.ingredients.length > 0) {
-    score += f.filters.ingredients.every((i) =>
-      candidate.ingredients.includes(i),
-    )
-      ? 1
-      : 0;
-  }
+  let overallScore = candidate.overallScore;
   if (f.filters.constraints.length > 0) {
-    score += f.filters.constraints.every((c) => candidate.diet.includes(c))
-      ? 1
-      : -10;
+    overallScore += f.filters.constraints.every((c) =>
+      candidate.diet.includes(c),
+    )
+      ? 0.1
+      : -0.05;
   }
   if (f.filters.cuisine) {
-    score += candidate.cuisine === f.filters.cuisine ? 1 : -1;
+    overallScore += candidate.cuisine === f.filters.cuisine ? 0.1 : -0.1;
   }
   if (f.filters.time_minutes > 0) {
-    score += candidate.time <= f.filters.time_minutes ? 1 : -1;
+    overallScore += candidate.time <= f.filters.time_minutes ? 0.1 : -0.1;
   }
-  return { ...candidate, score };
+  return { ...candidate, overallScore };
 }
 
-function mergeSearchResults(state: State, limit: number = 10): Candidate[] {
+function mergeSearchResults(state: State): Candidate[] {
   const resultMap = new Map<string, Candidate>();
   const f = state.facts;
 
   f.graphCandidates.forEach((candidate) => {
     resultMap.set(candidate.id, {
       ...candidate,
-      score: candidate.score + 0.5,
     });
   });
 
@@ -204,14 +191,11 @@ function mergeSearchResults(state: State, limit: number = 10): Candidate[] {
       const existing = resultMap.get(candidate.id)!;
       resultMap.set(candidate.id, {
         ...existing,
-        score: existing.score + candidate.score * 0.3,
       });
     }
   });
 
-  return Array.from(resultMap.values())
-    .sort((a, b) => b.score - a.score)
-    .slice(0, limit);
+  return Array.from(resultMap.values());
 }
 
 // ---- Nodes ----
@@ -227,9 +211,13 @@ enum NodeName {
   Done = "done",
 }
 
-async function Conversation(state: State, additionalInstructions: string) {
+async function Conversation(
+  state: State,
+  additionalInstructions: string,
+  historyWindowSize = 1,
+) {
   const f = state.facts;
-  const lastHumanMessages = state.messages.slice(-1);
+  const lastHumanMessages = state.messages.slice(-historyWindowSize);
   const systemPrompt = `
     You are a grounded cooking assistant. 
     Maintain dialog with the user to help him find a recipe.
@@ -243,7 +231,7 @@ async function Conversation(state: State, additionalInstructions: string) {
     new SystemMessage(systemPrompt),
     ...lastHumanMessages,
   ]);
-  return { messages: [response] };
+  return { messages: [response], facts: f };
 }
 
 const Nodes = {
@@ -278,38 +266,50 @@ const Nodes = {
       f.semanticCandidates = [];
     }
     f.candidates = f.candidates.map((c) => calculateDynamicScore(c, state));
-    f.candidates.sort((a, b) => b.score - a.score);
+    f.candidates.sort((a, b) => b.overallScore - a.overallScore);
+    if (f.candidates.length > 0) {
+      const firstScore = f.candidates[0].overallScore;
+      f.candidates = f.candidates.filter((c) => c.overallScore >= firstScore);
+    }
+
     return {
       facts: f,
     };
   },
   [NodeName.GraphSearch]: async (state: State) => {
-    const f = { ...state.facts, iterations: (state.facts.iterations ?? 0) + 1 };
+    const f = state.facts;
     f.graphCandidates = await graphSearch(f);
     return { facts: f };
   },
   [NodeName.SemanticSearch]: async (state: State) => {
-    const f = { ...state.facts, iterations: (state.facts.iterations ?? 0) + 1 };
+    const f = state.facts;
     const query = String(state.messages.at(-1)?.content ?? "");
     f.semanticCandidates = await semanticSearch(query, f);
     return { facts: f };
   },
   [NodeName.AskToPickCandidate]: async (state: State) => {
     const f = state.facts;
-    if (f.filters.constraints.length === 0 && f.filters.cuisine === "") {
+    if (!f.flags.didAskForMoreContext) {
       const availableConstraints = [
         ...new Set(f.candidates.flatMap((c) => c.diet)),
       ];
       const availableCuisines = [
         ...new Set(f.candidates.map((c) => c.cuisine)),
       ];
+      const missingIngredients = [
+        ...new Set(f.candidates.flatMap((c) => c.missingIngredients)),
+      ];
       return Conversation(
         state,
         `We have many recipes available that satisfy the user's requirements. 
         Let's ask if user wants to provide additional criteria to narrow down the list. 
-        Available constraints: ${availableConstraints.join(", ")}. Available cuisines: ${availableCuisines.join(", ")}.`,
+        Available constraints: ${availableConstraints.join(", ")}. Available cuisines: ${availableCuisines.join(", ")}.
+        Also ask if user wants to add any ingredients to the list. Missing ingredients: ${missingIngredients.join(", ")}.
+        `,
       );
     }
+    // If we still have many candidates, we should ask the user to pick a candidate from the top 3 list
+    f.candidates = f.candidates.slice(0, 3);
     return Conversation(
       state,
       `Ask the user to pick a candidate from the following list: ${f.candidates.map((c) => c.title).join(", ")}. 
@@ -317,7 +317,7 @@ const Nodes = {
     );
   },
   [NodeName.Retrieve]: async (state: State) => {
-    return {};
+    return { facts: { candidates: [], flags: { didRetrieval: true } } };
   },
   [NodeName.HandleNoCandidates]: async (state: State) => {
     return Conversation(
@@ -326,13 +326,20 @@ const Nodes = {
     );
   },
   [NodeName.Done]: async (state: State) => {
-    let pickedCandidateIndex = 0;
-    if (state.facts.candidates.length > 1) {
-      // TODO: User picked a candidate, we need to interpret his choice
+    if (state.facts.filters.intent === "other") {
+      return Conversation(state, "");
     }
-    const recipe = await getRecipe(
-      state.facts.candidates[pickedCandidateIndex].id,
-    );
+    if (state.facts.filters.intent === "pick_candidate") {
+      return Conversation(
+        state,
+        `Here is a full list of available recipes: 
+        ----
+        ${JSON.stringify(state.facts.candidates)}
+        ----
+        User has picked a recipe from the list. Find it in the list and describe it in detail.`,
+      );
+    }
+    const recipe = state.facts.candidates[0];
 
     return Conversation(
       state,
@@ -342,7 +349,7 @@ const Nodes = {
       ${JSON.stringify(recipe)}. 
       ---
       
-      Describe it in detail.`,
+      Describe it in detail. Explain to the user if some ingredients are missing or if there are some substitutions.`,
     );
   },
 };
@@ -353,7 +360,7 @@ function shouldContinue(state: State) {
   const f = state.facts;
   if (f.filters.intent !== "search_recipes") return NodeName.Done;
   if (state.facts.candidates.length > 1) return NodeName.AskToPickCandidate;
-  if (state.facts.candidates.length === 0 && f.iterations === 0)
+  if (state.facts.candidates.length === 0 && !f.flags.didRetrieval)
     return NodeName.Retrieve;
   return NodeName.Done;
 }
