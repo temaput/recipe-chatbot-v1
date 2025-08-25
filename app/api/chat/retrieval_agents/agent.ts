@@ -16,7 +16,7 @@ const checkpointer = PostgresSaver.fromConnString(
   process.env.NEON_CONNECTION_STRING!,
 );
 
-// await checkpointer.setup();
+await checkpointer.setup();
 
 const chatModel = new ChatOpenAI({
   model: "gpt-4o-mini",
@@ -205,7 +205,7 @@ async function Conversation(
   historyWindowSize = 1,
 ) {
   const f = state.facts;
-  const lastHumanMessages = state.messages.slice(-historyWindowSize);
+  const lastHumanMessages = historyWindowSize > 0 ? state.messages.slice(-historyWindowSize) : [];
   const systemPrompt = `
     You are a loving, warm grandmother who adores cooking and sharing family recipes. 
     You speak with the gentle wisdom of someone who has spent decades in the kitchen, 
@@ -312,6 +312,7 @@ const Nodes = {
   },
   [NodeName.SubstituteSearch]: async (state: State) => {
     const f = state.facts;
+    f.flags.didSearchForSubstitutes = true;
     f.substitutes = await substituteSearch(f);
     return { facts: f };
   },
@@ -326,7 +327,7 @@ const Nodes = {
       ];
       return Conversation(
         state,
-        `We have many recipes available that satisfy the user's requirements. 
+        `You have found many recipes that satisfy the user's requirements. 
         Let's ask if user wants to provide additional criteria to narrow down the list. 
         Available constraints: ${availableConstraints.join(", ")}. Available cuisines: ${availableCuisines.join(", ")}.
         `,
@@ -348,7 +349,7 @@ const Nodes = {
     f.flags.didRetrieval = false;
     return Conversation(
       state,
-      "No candidates found. Ask the user to refine their filters.",
+      "You have not found any recipes that satisfy the user's requirements. Ask the user to refine their filters.",
     );
   },
   [NodeName.Done]: async (state: State) => {
@@ -359,7 +360,7 @@ const Nodes = {
     if (state.facts.filters.intent === "search_substitutes") {
       return Conversation(
         state,
-        `Here is a full list of available substitutes: 
+        `You have found the following available substitutes: 
         ----
         ${JSON.stringify(state.facts.substitutes)}
         ----
@@ -373,7 +374,7 @@ const Nodes = {
     if (state.facts.filters.intent === "pick_candidate") {
       return Conversation(
         state,
-        `Here is a full list of available recipes: 
+        `You have found several recipes that satisfy the user's requirements. 
         ----
         ${JSON.stringify(state.facts.candidates)}
         ----
@@ -383,7 +384,7 @@ const Nodes = {
 
     return Conversation(
       state,
-      `Recipe was found. here it is: 
+      `You have found a recipe and it is a perfect match for the user's requirements. Here it is: 
       
       ---
       ${JSON.stringify(recipe)}. 
@@ -391,6 +392,7 @@ const Nodes = {
       
       Describe it in detail. If some ingredients are missing, mention it and ask user if he wants you to search for susbstitutes. 
       Don't suggest substitutes yourself.`,
+      0,
     );
   },
 };
@@ -400,7 +402,7 @@ const Nodes = {
 function shouldContinue(state: State) {
   const f = state.facts;
   if (f.filters.intent === "search_substitutes") {
-    if (f.substitutes.length === 0) return NodeName.SubstituteSearch;
+    if (!f.flags.didSearchForSubstitutes) return NodeName.SubstituteSearch;
     return NodeName.Done;
   }
   if (f.filters.intent !== "search_recipes") return NodeName.Done;

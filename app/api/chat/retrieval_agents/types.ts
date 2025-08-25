@@ -58,7 +58,11 @@ export type Facts = {
   graphCandidates: Candidate[];
   semanticCandidates: Candidate[];
   candidates: Candidate[];
-  flags: { didRetrieval: boolean; didAskForMoreContext: boolean };
+  flags: {
+    didRetrieval: boolean;
+    didAskForMoreContext: boolean;
+    didSearchForSubstitutes: boolean;
+  };
   substitutes: object[];
 };
 
@@ -80,7 +84,11 @@ export const GraphState = Annotation.Root({
       candidates: [],
       graphCandidates: [],
       semanticCandidates: [],
-      flags: { didRetrieval: false, didAskForMoreContext: false },
+      flags: {
+        didRetrieval: false,
+        didAskForMoreContext: false,
+        didSearchForSubstitutes: false,
+      },
       substitutes: [],
     }),
   }),
